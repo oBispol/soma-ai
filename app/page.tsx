@@ -4,6 +4,8 @@ import { useCallback, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { createWorker } from "tesseract.js";
 
+const CROP_RATIO = 0.4;
+
 export default function Home() {
   const webcamRef = useRef<Webcam>(null);
   const [total, setTotal] = useState(0);
@@ -12,14 +14,20 @@ export default function Home() {
   const [status, setStatus] = useState("Alinhe a etiqueta na mira");
 
   const parsePrice = (text: string): number | null => {
-    const cleaned = text.replace(/[^\d,.]/g, "");
-    const normalized = cleaned.replace(/\./g, "").replace(",", ".");
-    const match = normalized.match(/\d+\.?\d*/);
-    if (match) {
-      const value = parseFloat(match[0]);
-      if (value > 0 && value < 10000) return value;
+    const matches = text.match(/(\d+)[,.](\d{2})/g);
+    if (!matches) return null;
+
+    let bestValue: number | null = null;
+    for (const match of matches) {
+      const normalized = match.replace(",", ".");
+      const value = parseFloat(normalized);
+      if (value > 0 && value < 10000) {
+        if (bestValue === null || value > bestValue) {
+          bestValue = value;
+        }
+      }
     }
-    return null;
+    return bestValue;
   };
 
   const captureAndCalculate = useCallback(async () => {
@@ -27,19 +35,46 @@ export default function Home() {
     setIsProcessing(true);
     setStatus("Processando...");
 
-    const imageSrc = webcamRef.current?.getScreenshot();
-    if (!imageSrc) {
-      setStatus("Erro ao capturar imagem");
-      setIsProcessing(false);
-      return;
-    }
-
     try {
+      const video = webcamRef.current?.video;
+      if (!video) {
+        setStatus("Erro ao acessar câmera");
+        setIsProcessing(false);
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const cropW = Math.round(vw * CROP_RATIO);
+      const cropH = Math.round(vh * CROP_RATIO);
+      const cropX = Math.round((vw - cropW) / 2);
+      const cropY = Math.round((vh - cropH) / 2);
+      canvas.width = cropW;
+      canvas.height = cropH;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      const croppedImage = canvas.toDataURL("image/jpeg", 0.8);
+
       const worker = await createWorker("por");
-      const { data } = await worker.recognize(imageSrc);
+      await worker.setParameters({
+        tessedit_char_whitelist: "0123456789,.",
+      });
+      const { data } = await worker.recognize(croppedImage, undefined, {
+        blocks: true,
+      });
+      const allWords = data.blocks?.flatMap(b =>
+        b.paragraphs?.flatMap(p =>
+          p.lines?.flatMap(l => l.words ?? [])
+        ) ?? []
+      ) ?? [];
+      const highConfidence = allWords
+        .filter((w) => w.confidence > 70)
+        .map((w) => w.text)
+        .join(" ");
       await worker.terminate();
 
-      const price = parsePrice(data.text);
+      const price = parsePrice(highConfidence || data.text);
       if (price !== null) {
         setLastPrice(price);
         setTotal((prev) => prev + price);

@@ -31,25 +31,25 @@ export default function Home() {
   }, []);
 
   const parsePrice = (text: string): number | null => {
-    const commaMatches = text.match(/(\d+),(\d{1,2})\b/g);
+    const commaMatches = text.match(/(\d+),(\d{2})\b/g);
     if (commaMatches) {
-      for (const m of commaMatches.reverse()) {
+      for (const m of commaMatches) {
         const value = parseFloat(m.replace(",", "."));
         if (value > 0 && value < 10000) return value;
       }
     }
 
-    const dotMatches = text.match(/(\d+)\.(\d{1,2})\b/g);
+    const dotMatches = text.match(/(\d+)\.(\d{2})\b/g);
     if (dotMatches) {
-      for (const m of dotMatches.reverse()) {
+      for (const m of dotMatches) {
         const value = parseFloat(m);
         if (value > 0 && value < 10000) return value;
       }
     }
 
-    const rawNumbers = text.match(/\d{3,}/g);
+    const rawNumbers = text.match(/\d{3,5}/g);
     if (rawNumbers) {
-      for (const n of rawNumbers.reverse()) {
+      for (const n of rawNumbers) {
         const intPart = n.slice(0, -2);
         const decPart = n.slice(-2);
         const value = parseFloat(`${intPart}.${decPart}`);
@@ -66,10 +66,9 @@ export default function Home() {
     const pixels = imageData.data;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
-      const value = gray > 140 ? 255 : 0;
-      pixels[i] = value;
-      pixels[i + 1] = value;
-      pixels[i + 2] = value;
+      pixels[i] = gray;
+      pixels[i + 1] = gray;
+      pixels[i + 2] = gray;
     }
     ctx.putImageData(imageData, 0, 0);
   };

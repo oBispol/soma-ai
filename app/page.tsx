@@ -31,7 +31,7 @@ export default function Home() {
   }, []);
 
   const parsePrice = (text: string): number | null => {
-    const commaMatches = text.match(/(\d+),(\d{2})\b/g);
+    const commaMatches = text.match(/(\d+),(\d{1,2})\b/g);
     if (commaMatches) {
       for (const m of commaMatches) {
         const value = parseFloat(m.replace(",", "."));
@@ -39,7 +39,7 @@ export default function Home() {
       }
     }
 
-    const dotMatches = text.match(/(\d+)\.(\d{2})\b/g);
+    const dotMatches = text.match(/(\d+)\.(\d{1,2})\b/g);
     if (dotMatches) {
       for (const m of dotMatches) {
         const value = parseFloat(m);
@@ -62,14 +62,32 @@ export default function Home() {
 
   const preprocessImage = (canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d")!;
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
+    const imageData = ctx.getImageData(0, 0, w, h);
     const pixels = imageData.data;
+
+    let min = 255;
+    let max = 0;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
       pixels[i] = gray;
       pixels[i + 1] = gray;
       pixels[i + 2] = gray;
+      if (gray < min) min = gray;
+      if (gray > max) max = gray;
     }
+
+    const range = max - min;
+    if (range > 20) {
+      for (let i = 0; i < pixels.length; i += 4) {
+        const stretched = ((pixels[i] - min) / range) * 255;
+        pixels[i] = stretched;
+        pixels[i + 1] = stretched;
+        pixels[i + 2] = stretched;
+      }
+    }
+
     ctx.putImageData(imageData, 0, 0);
   };
 

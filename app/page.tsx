@@ -17,7 +17,8 @@ export default function Home() {
       try {
         const worker = await createWorker("eng");
         await worker.setParameters({
-          tessedit_pageseg_mode: PSM.SPARSE_TEXT, // Encontra texto em qualquer lugar da imagem
+          tessedit_char_whitelist: "0123456789,.",
+          tessedit_pageseg_mode: PSM.SPARSE_TEXT, // Mantemos 11 para evitar juntar R$ com o preço
         });
         workerRef.current = worker;
         setStatus("Alinhe a etiqueta na mira");

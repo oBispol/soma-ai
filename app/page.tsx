@@ -15,9 +15,10 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const worker = await createWorker("por");
+        const worker = await createWorker("eng");
         await worker.setParameters({
           tessedit_char_whitelist: "0123456789,.",
+          tessedit_pageseg_mode: "7",
         });
         workerRef.current = worker;
         setStatus("Alinhe a etiqueta na mira");
@@ -31,28 +32,20 @@ export default function Home() {
   }, []);
 
   const parsePrice = (text: string): number | null => {
-    const commaMatches = text.match(/(\d+),(\d{1,2})\b/g);
+    const commaMatches = text.match(/(\d+)\s*,\s*(\d{1,2})\b/g);
     if (commaMatches) {
       for (const m of commaMatches) {
-        const value = parseFloat(m.replace(",", "."));
+        const cleanStr = m.replace(/\s+/g, "").replace(",", ".");
+        const value = parseFloat(cleanStr);
         if (value > 0 && value < 10000) return value;
       }
     }
 
-    const dotMatches = text.match(/(\d+)\.(\d{1,2})\b/g);
+    const dotMatches = text.match(/(\d+)\s*\.\s*(\d{1,2})\b/g);
     if (dotMatches) {
       for (const m of dotMatches) {
-        const value = parseFloat(m);
-        if (value > 0 && value < 10000) return value;
-      }
-    }
-
-    const rawNumbers = text.match(/\d{3,5}/g);
-    if (rawNumbers) {
-      for (const n of rawNumbers) {
-        const intPart = n.slice(0, -2);
-        const decPart = n.slice(-2);
-        const value = parseFloat(`${intPart}.${decPart}`);
+        const cleanStr = m.replace(/\s+/g, "");
+        const value = parseFloat(cleanStr);
         if (value > 0 && value < 10000) return value;
       }
     }
@@ -126,11 +119,12 @@ export default function Home() {
       const cropW = Math.min(vw - cropX, Math.round(crossW / coverScale));
       const cropH = Math.min(vh - cropY, Math.round(crossH / coverScale));
 
+      const SCALE_FACTOR = 2;
       const canvas = document.createElement("canvas");
-      canvas.width = cropW;
-      canvas.height = cropH;
+      canvas.width = cropW * SCALE_FACTOR;
+      canvas.height = cropH * SCALE_FACTOR;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
       preprocessImage(canvas);
       const processedImage = canvas.toDataURL("image/jpeg", 0.9);
 

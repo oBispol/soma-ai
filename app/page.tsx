@@ -17,8 +17,7 @@ export default function Home() {
       try {
         const worker = await createWorker("eng");
         await worker.setParameters({
-          tessedit_char_whitelist: "0123456789,.",
-          tessedit_pageseg_mode: PSM.SINGLE_LINE,
+          tessedit_pageseg_mode: PSM.SPARSE_TEXT, // Encontra texto em qualquer lugar da imagem
         });
         workerRef.current = worker;
         setStatus("Alinhe a etiqueta na mira");
@@ -53,36 +52,7 @@ export default function Home() {
     return null;
   };
 
-  const preprocessImage = (canvas: HTMLCanvasElement) => {
-    const ctx = canvas.getContext("2d")!;
-    const w = canvas.width;
-    const h = canvas.height;
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const pixels = imageData.data;
-
-    let min = 255;
-    let max = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      const gray = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
-      pixels[i] = gray;
-      pixels[i + 1] = gray;
-      pixels[i + 2] = gray;
-      if (gray < min) min = gray;
-      if (gray > max) max = gray;
-    }
-
-    const range = max - min;
-    if (range > 20) {
-      for (let i = 0; i < pixels.length; i += 4) {
-        const stretched = ((pixels[i] - min) / range) * 255;
-        pixels[i] = stretched;
-        pixels[i + 1] = stretched;
-        pixels[i + 2] = stretched;
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-  };
+  // Função preprocessImage removida para preservar cores e nitidez naturais
 
   const captureAndCalculate = useCallback(async () => {
     if (isProcessing || !workerRef.current) return;
@@ -124,8 +94,9 @@ export default function Home() {
       canvas.width = cropW * SCALE_FACTOR;
       canvas.height = cropH * SCALE_FACTOR;
       const ctx = canvas.getContext("2d")!;
+      
+      // Desenha a imagem ampliada em cores reais (sem filtro cinza)
       ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
-      preprocessImage(canvas);
       const processedImage = canvas.toDataURL("image/jpeg", 0.9);
 
       const { data } = await workerRef.current.recognize(processedImage, undefined, {

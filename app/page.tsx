@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { createWorker } from "tesseract.js";
+import { createWorker, PSM } from "tesseract.js";
 
 export default function Home() {
   const webcamRef = useRef<Webcam>(null);
@@ -18,7 +18,7 @@ export default function Home() {
         const worker = await createWorker("eng");
         await worker.setParameters({
           tessedit_char_whitelist: "0123456789,.",
-          tessedit_pageseg_mode: "7",
+          tessedit_pageseg_mode: PSM.SINGLE_LINE,
         });
         workerRef.current = worker;
         setStatus("Alinhe a etiqueta na mira");
